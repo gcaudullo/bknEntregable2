@@ -3,6 +3,21 @@ const { json } = require('stream/consumers');
 class ProductManager {
     constructor(path) {
         this.path = path;
+        this.counter = 1; 
+        this.initializeIdCounter();
+    }
+
+    async initializeIdCounter() {
+        try {
+            const products = await getJsonFromFile(this.path);
+            if (products.length > 0) {
+                // Encuentra el máximo ID actualmente utilizado
+                const maxId = Math.max(...products.map(product => product.id));
+                this.counter = maxId + 1; // Establece el contador al siguiente ID disponible
+            }
+        } catch (error) {
+            console.error('Error initializing ID counter:', error);
+        }
     }
 
     // Debe tener un método addProduct el cual debe recibir un objeto con el formato previamente especificado,
@@ -18,11 +33,11 @@ class ProductManager {
             const products = await getJsonFromFile(this.path);
             const existingProduct = products.find(product => product.code === code);
             if (existingProduct) {
-                console.error('There is already a product with that code');
+                console.error(`There is already a product with that code ${code}`);
                 return;
             } else {
                 const newProduct = {
-                    id: products.length + 1,
+                    id: this.counter,
                     title,
                     description,
                     price,
@@ -30,9 +45,10 @@ class ProductManager {
                     code,
                     stock,
                 }
+                this.counter++
                 products.push(newProduct)
                 await saveJsonInFile(this.path, products)
-                console.log('The product was added 😎')
+                console.log(`The product with code ${code} was added 😎`)
             }
         } catch (error) {
             console.error('Error adding product:', error)
@@ -55,10 +71,9 @@ class ProductManager {
     async getProductById(productId) {
         try {
             const products = await getJsonFromFile(this.path)
-            console.log(products)
             const product = products.find(product => product.id === productId);
             if (!product) {
-                return 'Product Not found! 😨';
+                return `Product with id ${productId} Not found! 😨`;
             } else {
                 return product
             }
@@ -76,7 +91,7 @@ class ProductManager {
         const products = await getJsonFromFile(this.path);
         const position = products.findIndex((u) => u.id === id);
         if (position === -1) {
-            console.error('Producto no encontrado 😨');
+            console.error(`Product id ${id} not found 😨`);
             return;
         }
         if (title) {
@@ -98,7 +113,7 @@ class ProductManager {
             products[position].stock = stock;
         }
         await saveJsonInFile(this.path, products);
-        console.log('Product updated! 😎');
+        console.log(`Product id ${id} updated! 😎`);
     }
 
 
@@ -110,31 +125,33 @@ class ProductManager {
         if (position >= 0) {
             products.splice(position, 1);
             await saveJsonInFile(this.path, products);
-            console.log('Product deleted! 😎');
+            console.log(`Product id ${id} deleted! 😎`);
         } else {
-            console.log('There is no product with that ID')
+            console.log('There is no product with that Id')
         }
 
     }
 }
-    const getJsonFromFile = async (path) => {
-        if (!fs.existsSync(path)) {
-            return [];
-        }
-        const content = await fs.promises.readFile(path, 'utf-8');
-        return JSON.parse(content);
-    };
-
-    const saveJsonInFile = (path, data) => {
-        const content = JSON.stringify(data, null, '\t');
-        return fs.promises.writeFile(path, content, 'utf-8');
+const getJsonFromFile = async (path) => {
+    if (!fs.existsSync(path)) {
+        return [];
     }
+    const content = await fs.promises.readFile(path, 'utf-8');
+    return JSON.parse(content);
+};
 
+const saveJsonInFile = (path, data) => {
+    const content = JSON.stringify(data, null, '\t');
+    return fs.promises.writeFile(path, content, 'utf-8');
+}
 
+//-----------------------------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------------------------
 async function test() {
     //Creo una instancia de la clase “ProductManager”
     const productManager = new ProductManager('./products.json');
     //Llamo “getProducts” recién creada la instancia
+    console.log('Ejecuto getProducts');
     await productManager.getProducts()
         .then(products => {
             console.log(products);
@@ -142,9 +159,10 @@ async function test() {
         .catch(error => {
             console.error(error);
         });
-
+    console.log('Agrego Products');
     await productManager.addProduct('Apple Ipad 10 9 10th', 'Tablet de ultima generación', 959, './img/cel-tecno/apple-ipad-10-9-10th-gen-wifi', 5698, 20)
 
+    console.log('Ejecuto getProducts');
     await productManager.getProducts()
         .then(products => {
             console.log(products);
@@ -158,6 +176,7 @@ async function test() {
     // Agrego producto con todos los parametros.
     await productManager.addProduct('Apple Ipad 10 9 10th', 'Tablet de ultima generación', 959, './img/cel-tecno/apple-ipad-10-9-10th-gen-wifi', 5698, 20);
     // Me fijo si lo agrego al array de productos
+    console.log('Ejecuto getProducts');
     await productManager.getProducts()
         .then(products => {
             console.log(products);
@@ -172,6 +191,7 @@ async function test() {
     // Agrego segundo producto
     await productManager.addProduct('Cel Samsung Galaxy A04', 'Uno de los celulares mas venididos del 2022', 179, './img/cel-tecno/cel-samsung-galaxy-a04', 5699, 20);
     //Me fijo si lo agrego al array de productos
+    console.log('Ejecuto getProducts');
     await productManager.getProducts()
         .then(products => {
             console.log(products);
@@ -184,7 +204,7 @@ async function test() {
     await productManager.addProduct('Cel Xiaomi Redmi 10a', 'Uno de los celulares mas venididos del 2021', 153, './img/cel-tecno/xiaomi-redmi-10a', 5700, 20);
     await productManager.addProduct('ASUS Vivobook m513ia bq322t', 'Computador portatil de gran performace', 800, './img/notebooks/asus-vivobook-m513ia', 5701, 10);
 
-
+    console.log('Ejecuto getProducts');
     await productManager.getProducts()
         .then(products => {
             console.log(products);
@@ -223,6 +243,7 @@ async function test() {
     }
     await productManager.updateProduct(1, data)
 
+    console.log('Ejecuto getProducts');
     await productManager.getProducts()
         .then(products => {
             console.log(products);
@@ -233,6 +254,7 @@ async function test() {
 
     await productManager.deleteProduct(1);
 
+    console.log('Ejecuto getProducts');
     await productManager.getProducts()
         .then(products => {
             console.log(products);
